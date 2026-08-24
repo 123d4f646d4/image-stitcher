@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>图片拼接工具</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: #f0f2f5;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 800px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin-bottom: 8px;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 30px;
+  }
+
+  /* Upload Area */
+  .upload-area {
+    border: 2px dashed #c0c4cc;
+    border-radius: 12px;
+    padding: 50px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: #fff;
+    position: relative;
+  }
+
+  .upload-area:hover,
+  .upload-area.dragover {
+    border-color: #409eff;
+    background: #ecf5ff;
+  }
+
+  .upload-area .icon {
+    font-size: 48px;
+    color: #c0c4cc;
+    margin-bottom: 12px;
+    transition: color 0.3s;
+  }
+
+  .upload-area:hover .icon {
+    color: #409eff;
+  }
+
+  .upload-area p {
+    color: #666;
+    font-size: 15px;
+  }
+
+  .upload-area .hint {
+    color: #999;
+    font-size: 13px;
+    margin-top: 8px;
+  }
+
+  .upload-area input[type="file"] {
+    display: none;
+  }
+
+  /* Image List */
+  .image-list {
+    margin-top: 24px;
+    display: none;
+  }
+
+  .image-list.show {
+    display: block;
+  }
+
+  .image-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .image-list-header .count {
+    font-size: 14px;
+    color: #666;
+  }
+
+  .image-list-header .actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+
+  .btn-primary {
+    background: #409eff;
+    color: #fff;
+  }
+
+  .btn-primary:hover {
+    background: #337ecc;
+  }
+
+  .btn-primary:disabled {
+    background: #a0cfff;
+    cursor: not-allowed;
+  }
+
+  .btn-danger {
+    background: #f56c6c;
+    color: #fff;
+  }
+
+  .btn-danger:hover {
+    background: #d9534f;
+  }
+
+  .btn-success {
+    background: #67c23a;
+    color: #fff;
+  }
+
+  .btn-success:hover {
+    background: #529b2e;
+  }
+
+  .btn-success:disabled {
+    background: #b3e19d;
+    cursor: not-allowed;
+  }
+
+  .btn-outline {
+    background: transparent;
+    border: 1px solid #dcdfe6;
+    color: #606266;
+  }
+
+  .btn-outline:hover {
+    border-color: #409eff;
+    color: #409eff;
+  }
+
+  /* Thumbnail grid */
+  .thumb-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: #fff;
+    border-radius: 8px;
+    padding: 12px;
+    border: 1px solid #e4e7ed;
+  }
+
+  .thumb-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: #fafafa;
+    border: 1px solid #eee;
+    transition: background 0.2s;
+  }
+
+  .thumb-item:hover {
+    background: #f0f5ff;
+  }
+
+  .thumb-item .thumb-index {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #409eff;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .thumb-item .thumb-preview {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+    border: 1px solid #e4e7ed;
+  }
+
+  .thumb-item .thumb-name {
+    flex: 1;
+    font-size: 14px;
+    color: #333;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .thumb-item .thumb-size {
+    font-size: 12px;
+    color: #999;
+    flex-shrink: 0;
+  }
+
+  .thumb-item.dragging {
+    opacity: 0.5;
+    border-style: dashed;
+  }
+
+  .thumb-item.drag-over {
+    border-top: 2px solid #409eff;
+    margin-top: -1px;
+  }
+
+  .thumb-item .drag-handle {
+    width: 20px;
+    height: 20px;
+    cursor: grab;
+    color: #c0c4cc;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    user-select: none;
+    transition: color 0.2s;
+  }
+
+  .thumb-item .drag-handle:hover {
+    color: #409eff;
+  }
+
+  .thumb-item:active .drag-handle {
+    cursor: grabbing;
+  }
+
+  .thumb-item .thumb-remove {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: #c0c4cc;
+    font-size: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .thumb-item .thumb-remove:hover {
+    color: #f56c6c;
+    background: #fef0f0;
+  }
+
+  /* Action Bar */
+  .action-bar {
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  /* Result Area */
+  .result-area {
+    margin-top: 24px;
+    display: none;
+  }
+
+  .result-area.show {
+    display: block;
+  }
+
+  .result-area h2 {
+    font-size: 18px;
+    color: #1a1a2e;
+    margin-bottom: 12px;
+  }
+
+  .result-wrapper {
+    background: #fff;
+    border-radius: 8px;
+    padding: 16px;
+    border: 1px solid #e4e7ed;
+    overflow: auto;
+    max-height: 70vh;
+    text-align: center;
+  }
+
+  .result-wrapper img {
+    max-width: 100%;
+    display: block;
+    margin: 0 auto;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  }
+
+  .result-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  /* Loading */
+  .loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(255,255,255,0.85);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .loading-overlay.show {
+    display: flex;
+  }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e4e7ed;
+    border-top-color: #409eff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .loading-overlay p {
+    color: #666;
+    font-size: 15px;
+  }
+
+  /* Empty state */
+  .empty-state {
+    color: #999;
+    font-size: 14px;
+    text-align: center;
+    padding: 30px;
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    body { padding: 20px 12px; }
+    h1 { font-size: 22px; }
+    .upload-area { padding: 30px 16px; }
+    .thumb-item { flex-wrap: wrap; }
+    .thumb-item .thumb-name { width: 100%; order: 10; }
+    .action-bar { flex-direction: column; }
+    .action-bar .btn { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>图片拼接工具</h1>
+  <p class="subtitle">上传多张图片，自动拼接成一列并标记序号（支持拖拽排序，不同宽度自动居中）</p>
+
+  <!-- Upload Area -->
+  <div class="upload-area" id="uploadArea">
+    <div class="icon">&#43;</div>
+    <p>点击上传图片，或拖拽图片到此处</p>
+    <p class="hint">支持 JPG / PNG / WebP 格式，可多选</p>
+    <input type="file" id="fileInput" accept="image/*" multiple>
+  </div>
+
+  <!-- Image List -->
+  <div class="image-list" id="imageList">
+    <div class="image-list-header">
+      <span class="count" id="imageCount">已选择 0 张图片</span>
+      <div class="actions">
+        <button class="btn btn-outline" id="addMoreBtn">继续添加</button>
+        <button class="btn btn-danger" id="clearAllBtn">清空</button>
+      </div>
+    </div>
+    <div class="thumb-grid" id="thumbGrid"></div>
+  </div>
+
+  <!-- Action Bar -->
+  <div class="action-bar" id="actionBar">
+    <button class="btn btn-primary" id="stitchBtn" disabled>开始拼接</button>
+  </div>
+
+  <!-- Result Area -->
+  <div class="result-area" id="resultArea">
+    <h2>拼接结果</h2>
+    <div class="result-wrapper" id="resultWrapper">
+      <img id="resultImage" alt="拼接结果">
+    </div>
+    <div class="result-actions">
+      <button class="btn btn-success" id="downloadBtn">下载图片</button>
+      <button class="btn btn-outline" id="backBtn">继续编辑</button>
+    </div>
+  </div>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <p>正在拼接图片，请稍候...</p>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // DOM refs
+  const uploadArea = document.getElementById('uploadArea');
+  const fileInput = document.getElementById('fileInput');
+  const imageList = document.getElementById('imageList');
+  const imageCount = document.getElementById('imageCount');
+  const thumbGrid = document.getElementById('thumbGrid');
+  const addMoreBtn = document.getElementById('addMoreBtn');
+  const clearAllBtn = document.getElementById('clearAllBtn');
+  const stitchBtn = document.getElementById('stitchBtn');
+  const resultArea = document.getElementById('resultArea');
+  const resultImage = document.getElementById('resultImage');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const backBtn = document.getElementById('backBtn');
+  const loadingOverlay = document.getElementById('loadingOverlay');
+
+  // State
+  let images = []; // Array of { id, file, dataUrl, name, size, naturalWidth, naturalHeight }
+
+  // --- Helpers ---
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  // --- Load image from File ---
+  function loadImageFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const dataUrl = e.target.result;
+        const img = new Image();
+        img.onload = function() {
+          resolve({
+            id: Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+            file: file,
+            dataUrl: dataUrl,
+            name: file.name,
+            size: file.size,
+            naturalWidth: img.naturalWidth,
+            naturalHeight: img.naturalHeight
+          });
+        };
+        img.onerror = reject;
+        img.src = dataUrl;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // --- Add files ---
+  async function addFiles(files) {
+    if (!files || files.length === 0) return;
+
+    const validFiles = [];
+    for (const file of files) {
+      if (file.type.startsWith('image/')) {
+        validFiles.push(file);
+      }
+    }
+
+    if (validFiles.length === 0) return;
+
+    // Show loading briefly
+    loadingOverlay.classList.add('show');
+    loadingOverlay.querySelector('p').textContent = '正在加载图片...';
+
+    try {
+      for (const file of validFiles) {
+        const imgData = await loadImageFile(file);
+        images.push(imgData);
+      }
+    } catch (err) {
+      console.error('图片加载失败:', err);
+    } finally {
+      loadingOverlay.classList.remove('show');
+    }
+
+    renderThumbnails();
+    updateUI();
+  }
+
+  // --- Remove image ---
+  function removeImage(id) {
+    images = images.filter(img => img.id !== id);
+    renderThumbnails();
+    updateUI();
+  }
+
+  // --- Clear all ---
+  function clearAll() {
+    images = [];
+    renderThumbnails();
+    updateUI();
+    resultArea.classList.remove('show');
+    imageList.classList.remove('show');
+  }
+
+  // --- Render thumbnails ---
+  function renderThumbnails() {
+    thumbGrid.innerHTML = '';
+
+    if (images.length === 0) {
+      thumbGrid.innerHTML = '<div class="empty-state">暂无图片，请点击上方区域上传</div>';
+      return;
+    }
+
+    images.forEach(function(img, index) {
+      const div = document.createElement('div');
+      div.className = 'thumb-item';
+      div.draggable = true;
+      div.dataset.id = img.id;
+
+      const dragHandle = document.createElement('span');
+      dragHandle.className = 'drag-handle';
+      dragHandle.textContent = '⠿';
+      dragHandle.setAttribute('aria-label', '拖拽排序');
+
+      const indexSpan = document.createElement('span');
+      indexSpan.className = 'thumb-index';
+      indexSpan.textContent = index + 1;
+
+      const preview = document.createElement('img');
+      preview.className = 'thumb-preview';
+      preview.src = img.dataUrl;
+      preview.alt = img.name;
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'thumb-name';
+      nameSpan.textContent = img.name;
+
+      const sizeSpan = document.createElement('span');
+      sizeSpan.className = 'thumb-size';
+      sizeSpan.textContent = formatSize(img.size);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'thumb-remove';
+      removeBtn.innerHTML = '&#10005;';
+      removeBtn.title = '移除';
+      removeBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        removeImage(img.id);
+      });
+
+      div.appendChild(dragHandle);
+      div.appendChild(indexSpan);
+      div.appendChild(preview);
+      div.appendChild(nameSpan);
+      div.appendChild(sizeSpan);
+      div.appendChild(removeBtn);
+      thumbGrid.appendChild(div);
+    });
+
+    // Bind drag and drop events
+    bindDragDrop();
+  }
+
+  // Simple escape
+  function escapeHtml(text) {
+    const d = document.createElement('div');
+    d.textContent = text;
+    return d.innerHTML;
+  }
+
+  // --- Drag and Drop ---
+  let dragSrcId = null;
+
+  function bindDragDrop() {
+    const items = thumbGrid.querySelectorAll('.thumb-item');
+
+    items.forEach(function(item) {
+      item.addEventListener('dragstart', function(e) {
+        dragSrcId = this.dataset.id;
+        this.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        // Required for Firefox
+        e.dataTransfer.setData('text/plain', this.dataset.id);
+      });
+
+      item.addEventListener('dragenter', function(e) {
+        e.preventDefault();
+        if (this.dataset.id !== dragSrcId) {
+          this.classList.add('drag-over');
+        }
+      });
+
+      item.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      });
+
+      item.addEventListener('dragleave', function(e) {
+        this.classList.remove('drag-over');
+      });
+
+      item.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.classList.remove('drag-over');
+
+        const targetId = this.dataset.id;
+        if (dragSrcId && dragSrcId !== targetId) {
+          const fromIndex = images.findIndex(function(img) { return img.id === dragSrcId; });
+          const toIndex = images.findIndex(function(img) { return img.id === targetId; });
+
+          if (fromIndex !== -1 && toIndex !== -1) {
+            // Move the item
+            const [moved] = images.splice(fromIndex, 1);
+            images.splice(toIndex, 0, moved);
+            renderThumbnails();
+          }
+        }
+        dragSrcId = null;
+      });
+
+      item.addEventListener('dragend', function() {
+        this.classList.remove('dragging');
+        items.forEach(function(i) { i.classList.remove('drag-over'); });
+        dragSrcId = null;
+      });
+    });
+  }
+
+  // --- Update UI state ---
+  function updateUI() {
+    imageCount.textContent = '已选择 ' + images.length + ' 张图片';
+    stitchBtn.disabled = images.length === 0;
+
+    if (images.length > 0) {
+      imageList.classList.add('show');
+    } else {
+      imageList.classList.remove('show');
+    }
+  }
+
+  // --- Stitch images ---
+  function stitchImages() {
+    if (images.length === 0) return;
+
+    loadingOverlay.classList.add('show');
+    loadingOverlay.querySelector('p').textContent = '正在拼接图片...';
+
+    // Use setTimeout to let the UI update
+    setTimeout(function() {
+      try {
+        doStitch();
+      } catch (err) {
+        console.error('拼接失败:', err);
+        alert('拼接失败，请重试');
+      } finally {
+        loadingOverlay.classList.remove('show');
+      }
+    }, 100);
+  }
+
+  function doStitch() {
+    const padding = 6; // gap between images
+    const numberConfig = {
+      fontSize: 28,
+      fontFamily: 'Arial, sans-serif',
+      padding: 10,        // number offset from top-left
+      bgPadding: 4,       // padding around the number text
+      textColor: '#ffffff',
+      bgColor: 'rgba(0, 0, 0, 0.55)',
+      borderRadius: 4
+    };
+
+    // Sort images by index (already in order)
+    // We need to load all images into Image objects first
+    let loadedCount = 0;
+    const loadedImages = [];
+
+    function proceed() {
+      try {
+        // Calculate total width: max width among all images
+        // Calculate total height: sum of all image heights + gaps
+        let totalWidth = 0;
+        let totalHeight = 0;
+
+        loadedImages.forEach(function(img, i) {
+          totalWidth = Math.max(totalWidth, img.naturalWidth);
+          totalHeight += img.naturalHeight;
+          if (i < loadedImages.length - 1) {
+            totalHeight += padding;
+          }
+        });
+
+        // Create canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = totalWidth;
+        canvas.height = totalHeight;
+        const ctx = canvas.getContext('2d');
+
+        // White background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw each image with number
+        let currentY = 0;
+
+        loadedImages.forEach(function(img, index) {
+          const imgW = img.naturalWidth;
+          const imgH = img.naturalHeight;
+
+          // Center smaller images horizontally
+          const offsetX = Math.round((totalWidth - imgW) / 2);
+
+          // Draw image centered
+          ctx.drawImage(img, offsetX, currentY, imgW, imgH);
+
+          // Draw number badge
+          const number = (index + 1).toString();
+          ctx.font = 'bold ' + numberConfig.fontSize + 'px ' + numberConfig.fontFamily;
+          const textMetrics = ctx.measureText(number);
+          const textWidth = textMetrics.width;
+          const textHeight = numberConfig.fontSize;
+
+          const badgeW = textWidth + numberConfig.bgPadding * 2;
+          const badgeH = textHeight + numberConfig.bgPadding * 2;
+          const badgeX = numberConfig.padding;
+          const badgeY = currentY + numberConfig.padding;
+
+          // Rounded rect background
+          const r = numberConfig.borderRadius;
+          ctx.beginPath();
+          ctx.moveTo(badgeX + r, badgeY);
+          ctx.lineTo(badgeX + badgeW - r, badgeY);
+          ctx.quadraticCurveTo(badgeX + badgeW, badgeY, badgeX + badgeW, badgeY + r);
+          ctx.lineTo(badgeX + badgeW, badgeY + badgeH - r);
+          ctx.quadraticCurveTo(badgeX + badgeW, badgeY + badgeH, badgeX + badgeW - r, badgeY + badgeH);
+          ctx.lineTo(badgeX + r, badgeY + badgeH);
+          ctx.quadraticCurveTo(badgeX, badgeY + badgeH, badgeX, badgeY + badgeH - r);
+          ctx.lineTo(badgeX, badgeY + r);
+          ctx.quadraticCurveTo(badgeX, badgeY, badgeX + r, badgeY);
+          ctx.closePath();
+          ctx.fillStyle = numberConfig.bgColor;
+          ctx.fill();
+
+          // Number text
+          ctx.fillStyle = numberConfig.textColor;
+          ctx.textBaseline = 'top';
+          ctx.textAlign = 'left';
+          ctx.fillText(number, badgeX + numberConfig.bgPadding, badgeY + numberConfig.bgPadding);
+
+          currentY += img.naturalHeight + padding;
+        });
+
+        // Show result
+        const dataUrl = canvas.toDataURL('image/png');
+        resultImage.src = dataUrl;
+        resultArea.classList.add('show');
+        resultArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (err) {
+        console.error('拼接过程出错:', err);
+        alert('拼接失败，请重试');
+      }
+    }
+
+    // Load all images
+    images.forEach(function(imgData, index) {
+      const img = new Image();
+      img.onload = function() {
+        loadedImages[index] = img;
+        loadedCount++;
+        if (loadedCount === images.length) {
+          proceed();
+        }
+      };
+      img.onerror = function() {
+        loadedImages[index] = null;
+        loadedCount++;
+        if (loadedCount === images.length) {
+          proceed();
+        }
+      };
+      img.src = imgData.dataUrl;
+    });
+  }
+
+  // --- Download ---
+  function downloadResult() {
+    const dataUrl = resultImage.src;
+    if (!dataUrl || dataUrl === '') return;
+
+    const link = document.createElement('a');
+    link.download = '拼接结果_' + new Date().toISOString().slice(0, 19).replace(/[:-]/g, '') + '.png';
+    link.href = dataUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // --- Event Bindings ---
+
+  // Upload area click
+  uploadArea.addEventListener('click', function() {
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', function() {
+    addFiles(this.files);
+    this.value = '';
+  });
+
+  // Drag & Drop
+  uploadArea.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.classList.add('dragover');
+  });
+
+  uploadArea.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.classList.remove('dragover');
+  });
+
+  uploadArea.addEventListener('drop', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.classList.remove('dragover');
+    addFiles(e.dataTransfer.files);
+  });
+
+  // Add more
+  addMoreBtn.addEventListener('click', function() {
+    fileInput.click();
+  });
+
+  // Clear all
+  clearAllBtn.addEventListener('click', clearAll);
+
+  // Stitch
+  stitchBtn.addEventListener('click', stitchImages);
+
+  // Download
+  downloadBtn.addEventListener('click', downloadResult);
+
+  // Back / continue editing
+  backBtn.addEventListener('click', function() {
+    resultArea.classList.remove('show');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // Keyboard shortcut: Enter to stitch
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !stitchBtn.disabled && !resultArea.classList.contains('show')) {
+      stitchImages();
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
